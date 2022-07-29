@@ -1,0 +1,330 @@
+public class CellAutomatonExample{
+
+    // Example Cell Automaton using backtracking and memoization, Problem expanding-nebula
+    
+    /*
+    To see how this grid will change to become the current grid (c) over the next time step, consider the 2x2 blocks of cells around each cell. 
+    Of the 2x2 block of [p[0][0], p[0][1], p[1][0], p[1][1]], only p[0][1] has gas in it, which means this 2x2 block would become cell c[0][0] with gas in the next time step:
+
+    .O -> O
+    ..
+    
+    Likewise, in the next 2x2 block to the right consisting of [p[0][1], p[0][2], p[1][1], p[1][2]], two of the containing cells have gas, so in the next state of the grid, c[0][1] will NOT have gas:
+
+      O. -> .
+      .O
+    */
+    
+    private static int[][] allStates4B = new int[][] {
+    	{0, 0, 0, 0}, 
+    	{0, 0, 0, 1}, 
+    	{0, 0, 1, 0}, 
+    	{0, 0, 1, 1},
+    	{0, 1, 0, 0}, 
+    	{0, 1, 0, 1}, 
+    	{0, 1, 1, 0}, 
+    	{0, 1, 1, 1},
+    	{1, 0, 0, 0}, 
+    	{1, 0, 0, 1}, 
+    	{1, 0, 1, 0}, 
+    	{1, 0, 1, 1},
+    	{1, 1, 0, 0}, 
+    	{1, 1, 0, 1}, 
+    	{1, 1, 1, 0}, 
+    	{1, 1, 1, 1}}; 
+
+    private static int[] allStatesGas4B = new int[] {1, 2, 4, 8};
+    private static int[] allStatesEmpty4B = new int[] {0, 3, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15}; 
+    
+    private static int[] allStatesEmptyGasRight4B = new int[] {0, 3, 6, 9, 10, 11, 12, 14};
+    private static int[] allStatesEmptyGasDown4B = new int[] {0, 5, 6, 9, 10, 12, 13, 14};
+    private static int[] allStatesEmptyGasRightDown4B = new int[] {0, 6, 9, 10, 12, 14};
+   
+    private static int[][] allStates2B = new int[][] {
+    	{0, 0}, 
+    	{0, 1}, 
+    	{1, 0}, 
+    	{1, 1}}; 
+    
+    private static int[][] allStatesGas2B = new int[][] {{1,2}, {0}, {0}, {}};
+    private static int[][] allStatesEmpty2B = new int[][] {{0,3}, {1,2,3}, {1,2,3}, {0,1,2,3}}; 
+
+    private static int[][] allStatesEmptyGasRight2B = new int[][] {{0,3}, {2}, {1,2,3}, {0,2}}; 
+    private static int[][] allStatesEmptyGasDown2B = new int[][] {{0}, {1,2}, {1,2}, {0,1,2}}; 
+    private static int[][] allStatesEmptyGasRightDown2B = new int[][] {{0}, {2}, {1,2}, {0,2}}; 
+    
+    private static int[][] allStatesGas1B = new int[][] {{1}, {0}, {0}, {}, {0}, {}, {}, {}};
+    private static int[][] allStatesEmpty1B = new int[][] {{0}, {1}, {1}, {0,1}, {1}, {0,1}, {0,1}, {0,1}}; 
+
+    private static int[][] allStatesEmptyGasRight1B = new int[][] {{0}, {1}, {}, {0}, {1}, {0,1}, {0,1}, {0,1}}; 
+    private static int[][] allStatesEmptyGasDown1B = new int[][] {{0}, {}, {1}, {0}, {1}, {0}, {0,1}, {0}}; 
+    private static int[][] allStatesEmptyGasRightDown1B = new int[][] {{0}, {}, {}, {0}, {1}, {0}, {0,1}, {0}}; 
+    
+    private static int[][] matrix; 
+    private static int total; 
+    private static int rows, cols; 
+    
+    // for memoization
+    private static int[][] memo; 
+    
+    public static int solution10(boolean[][] g) {
+    	
+    	total = 0; 
+    	rows = g.length; 
+    	cols = g[0].length; 
+ 
+    	matrix = new int[rows+1][cols+1];
+    	
+    	memo = new int[cols][(int)Math.pow(2, rows+1)]; 
+    	for (int i = 0; i<memo.length; i++) {
+    		for (int j = 0; j< memo[0].length; j++) {
+    			memo[i][j] = -1;
+    		}
+    	}
+    	
+    	backtracking (0, 0, g);  
+    	
+        return total; 
+    }
+    
+    private static int getValueColumn(int col){
+    	
+    	int result = 0; 
+    	int mult = 1; 
+    	
+    	for (int i = matrix.length-1; i>=0; i--) {
+    		result += mult*matrix[i][col]; 
+    		mult*=2; 
+    	}
+    
+    	return result; 
+    	
+    }
+    
+    
+    private static int[] getNextInitialStates (boolean[][] g){
+    	
+    	if (g[0][0]) {
+    		return allStatesGas4B; 
+    	}
+    	
+    	if (rows > 1 && g[1][0] && cols > 1 && g[0][1]) {
+    		return allStatesEmptyGasRightDown4B; 
+    	}
+    	
+       	if (rows > 1 && g[1][0]) {
+    		return allStatesEmptyGasDown4B; 
+    	}
+       	
+       	if (cols > 1 && g[0][1]) {
+    		return allStatesEmptyGasRight4B; 
+    	}
+       	
+       	return allStatesEmpty4B; 
+    	    	
+    }
+    
+    private static int[] getNextStatesFirstColumn(int row, boolean[][] g) {
+    	
+    	int index = matrix[row][0]*2 + matrix[row][1]; 
+    	
+    	if (g[row][0]) {
+    		return allStatesGas2B[index]; 
+    	}
+    	
+    	if (row < rows - 1 && g[row+1][0] && 0 < cols - 1 && g[row][1]) {
+    		return allStatesEmptyGasRightDown2B[index];
+    	}
+    	
+      	if (row < rows - 1 && g[row+1][0]) {
+    		return allStatesEmptyGasDown2B[index]; 
+    	}
+       	
+       	if (0 < cols - 1 && g[row][1]) {
+    		return allStatesEmptyGasRight2B[index]; 
+    	}
+       	
+       	return allStatesEmpty2B[index]; 
+   
+    }
+    
+    private static int[] getNextStatesFirstRow(int col, boolean[][] g) {
+    	
+    	int index = matrix[0][col]*2 + matrix[1][col]; 
+    	
+    	if (g[0][col]) {
+    		return allStatesGas2B[index]; 
+    	}
+    	
+       	if (0 < rows - 1 && g[1][col] && col < cols - 1 && g[0][col+1]) {
+    		return allStatesEmptyGasRightDown2B[index];
+    	}
+    	
+      	if (0 < rows - 1 && g[1][col]) {
+      		return allStatesEmptyGasRight2B[index];
+    		//return allStatesEmptyGasDown2B[index]; 
+    	}
+       	
+       	if (col < cols - 1 && g[0][col+1]) {
+       		return allStatesEmptyGasDown2B[index]; 
+       		//return allStatesEmptyGasRight2B[index]; 
+    	}
+       	
+       	return allStatesEmpty2B[index]; 
+   
+    }
+    
+    private static int[] getNextStates(int row, int col, boolean[][] g) {
+    	
+    	
+    	int index = matrix[row][col]*4 + matrix[row][col+1]*2 + matrix[row+1][col]; 
+    	
+    	if (g[row][col]) {
+    		return allStatesGas1B[index]; 
+    	}
+    	
+       	if (row < rows - 1 && g[row+1][col] && col < cols - 1 && g[row][col+1]) {
+    		return allStatesEmptyGasRightDown1B[index];
+    	}
+    	
+      	if (row < rows - 1 && g[row+1][col]) {
+    		return allStatesEmptyGasDown1B[index]; 
+    	}
+       	
+       	if (col < cols - 1 && g[row][col+1]) {
+    		return allStatesEmptyGasRight1B[index]; 
+    	}
+       	
+       	return allStatesEmpty1B[index]; 
+    	
+    }
+    
+    private static int[] getStates(int row, int col, boolean[][] g) {
+    	
+    	if (row==0 && col == 0) {
+    		return getNextInitialStates(g); 
+    	}
+    	
+    	if (col==0) {
+    		return getNextStatesFirstColumn(row,g); 
+    	}
+    	
+    	if (row== 0) {
+    		return getNextStatesFirstRow(col,g); 
+    	}
+    	
+    	return getNextStates(row, col, g); 
+    }
+    
+    private static void backtracking (int row, int col, boolean[][] g) {
+    	
+    	// if index out of index 
+    	if (row >= rows || col >= cols) {
+    		return; 
+    	}
+    	
+    	int[] states = getStates(row,col,g); 
+    	
+    	// last element
+    	if (row == rows-1 && col == cols-1) {	
+    		total += states.length; 
+    		return; 
+    	}
+    	
+    	// backup quadrant
+    	int[][] quadrantBackup = new int[2][2]; 
+    	quadrantBackup[0][0] = matrix[row][col]; 
+    	quadrantBackup[0][1] = matrix[row][col+1]; 
+    	quadrantBackup[1][0] = matrix[row+1][col]; 
+    	quadrantBackup[1][1] = matrix[row+1][col+1]; 
+    	
+
+		for (int s : states) {
+						
+			// first element
+		   	if (row == 0 && col == 0) {
+    			matrix[row][col] = allStates4B[s][0];  
+       			matrix[row][col+1] = allStates4B[s][1];
+       			matrix[row+1][col] = allStates4B[s][2];
+       			matrix[row+1][col+1] = allStates4B[s][3];
+		   	}
+		   	else if (row == 0) {
+       			matrix[row][col+1] = allStates2B[s][0];
+       			matrix[row+1][col+1] = allStates2B[s][1];
+		   	}
+		   	else if (col == 0) {
+      			matrix[row+1][col] = allStates2B[s][0];
+       			matrix[row+1][col+1] = allStates2B[s][1];
+		   	}
+		   	else {
+		   		matrix[row+1][col+1] = s; 
+		   	}
+   			
+		   	// memoization
+	    	int totalbefore = total; 
+	    	if(row == rows-1 && col<cols-1) {
+	    		if (memo[col][getValueColumn(col+1)] >= 0) {
+	    			total += memo[col][getValueColumn(col+1)] ; 
+	    			continue; 
+	    		}
+	    	}
+
+   			backtracking((row+1)%rows, row == rows-1? col+1 :col, g); 
+   			
+   	    	// memoization
+   			if(row == rows-1 && col<cols-1) {
+   	    		memo[col][getValueColumn(col+1)] = total - totalbefore; 
+   	    	}
+   			
+   			matrix[row][col] = quadrantBackup[0][0]; 
+   			matrix[row][col+1] = quadrantBackup[0][1];
+   			matrix[row+1][col] = quadrantBackup[1][0];
+   			matrix[row+1][col+1] = quadrantBackup[1][1];
+   			
+		}
+    
+    
+    
+	public static void main(String[] args) {
+		
+		System.out.println(foobar2.solution10(new boolean[][]{{false}}));
+		System.out.println(foobar2.solution10(new boolean[][]{{true}}));
+		
+		System.out.println(foobar2.solution10(new boolean[][]{{false, false}}));
+		System.out.println(foobar2.solution10(new boolean[][]{{false, true}}));
+		System.out.println(foobar2.solution10(new boolean[][]{{true, false}}));
+		System.out.println(foobar2.solution10(new boolean[][]{{true, true}}));
+		
+		System.out.println(foobar2.solution10(new boolean[][]{{false}, {false}}));
+		System.out.println(foobar2.solution10(new boolean[][]{{false}, {true}}));
+		System.out.println(foobar2.solution10(new boolean[][]{{true}, {false}}));
+		System.out.println(foobar2.solution10(new boolean[][]{{true}, {true}}));
+		
+		System.out.println(foobar2.solution10(new boolean[][]{{true, true},{true, true}}));
+
+
+		
+		System.out.println(foobar2.solution10(new boolean[][]{{true, false, true}, {false, true, false}, {true, false, true}}));
+		
+		System.out.println(foobar2.solution10(new boolean[][]{{true, true, true}, {true, true, true}, {true, true, true}}));
+		
+		System.out.println(foobar2.solution10(new boolean[][]{{true, false, true, false, false, true, true, true}, {true, false, true, false, false, false, true, false}, {true, true, true, false, false, false, true, false}, {true, false, true, false, false, false, true, false}, {true, false, true, false, false, true, true, true}}));
+
+		System.out.println(foobar2.solution10(new boolean[][]{{true, true, false, true, false, true, false, true, true, false}, {true, true, false, false, false, false, true, true, true, false}, {true, true, false, false, false, false, false, false, false, true}, {false, true, false, false, false, false, true, true, false, false}}));
+		
+		System.out.println(foobar2.solution10(new boolean[][]{{false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false}, 
+			{false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false}, 
+			{false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false}, 
+			{false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false}, 
+			{false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false}, 
+			{false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false}, 
+			{false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false}, 
+			{false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false}, 
+			{false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false,false, false, false, false, false, false, false, false, false, false}}));
+		
+		
+
+	}		
+
+    
+}
